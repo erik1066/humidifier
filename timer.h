@@ -34,7 +34,8 @@ private:
     std::chrono::system_clock::time_point _startTime = std::chrono::system_clock::now();
     std::chrono::system_clock::time_point _endTime = std::chrono::system_clock::now();
 public:
-    Timer(milliseconds duration);
+    //Timer(milliseconds duration);
+    Timer(int milliseconds);
     void Start();
     void Stop();
     milliseconds GetRemaining();

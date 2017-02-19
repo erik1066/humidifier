@@ -19,8 +19,9 @@
 
 #include "timer.h"
 
-Timer::Timer(milliseconds duration)
+Timer::Timer(int ms)
 {
+    milliseconds duration = milliseconds(ms);
     _duration = duration;
     _running = false;
     _elapsed = milliseconds(0);
