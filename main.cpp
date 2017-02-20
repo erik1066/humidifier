@@ -36,11 +36,11 @@ using namespace std;
 #endif
 
 #define RELAYPIN 14 // the 5v relay module is on this GPIO pin, it controls the fan
-#define DHTPIN 16 // the pin for the temp/humidity sensor
+#define DHTPIN 23 // the pin for the temp/humidity sensor
 #define MAXTIMINGS 85
 #define MAXHISTORICAL 14
 #define BUZZERPIN 18
-#define WATERLEDPIN 21
+#define WATERLEDPIN 24
 
 bool _fanOn = false;
 
@@ -57,13 +57,13 @@ void Beep(int reps, int sleep)
 
 void TurnOnFan() {
     digitalWrite(RELAYPIN, LOW); // disable for now
-    cout << "Humidifier fan on" << endl;
+    //cout << "Humidifier fan on" << endl;
     _fanOn = true;
 }
 
 void TurnOffFan() {
     digitalWrite(RELAYPIN, HIGH);
-    cout << "Humidifier fan off" << endl;
+    //cout << "Humidifier fan off" << endl;
     _fanOn = false;
 }
 
@@ -132,8 +132,10 @@ bool GetCurrentReadings(double &temp, double &humidity) {
                 (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF)) ) {
             f = dht11_dat[2] * 9. / 5. + 32;
 
-        printf( "  Sensor reading (DHT11): Humidity = %d.%d %% Temperature = %d.%d C (%.1f F)\n",
+        /*
+            printf( "  Sensor reading (DHT11): Humidity = %d.%d %% Temperature = %d.%d C (%.1f F)\n",
             dht11_dat[0], dht11_dat[1], dht11_dat[2], dht11_dat[3], f );
+        */
 
         temp = f;
         humidity = dht11_dat[0];
@@ -141,7 +143,7 @@ bool GetCurrentReadings(double &temp, double &humidity) {
     }
     else
     {
-        printf( "  Sensor reading (DHT11): Bad data read from DHT11, skipping\n" );
+        //printf( "  Sensor reading (DHT11): Bad data read from DHT11, skipping\n" );
         return false;
     }
 }
@@ -151,18 +153,18 @@ double GetWaterLevel() {
     int currentReading = analogRead(101);
 
     int newWaterLevel = (currentReading*100)/1023 - 1;
-    printf("  Sensor reading (Water): %d\n", newWaterLevel);
+    //printf("  Sensor reading (Water): %d\n", newWaterLevel);
 
-    return lastReading + 0.0;
+    return newWaterLevel + 0.0;
 }
 
 int GetHumiditySetLevel() {
 
     int currentReading = analogRead(100);
     int newHumidity = (currentReading*100)/1023 - 1;
-    printf("  Dial reading: %d\n", newHumidity);
+    //printf("  Dial reading: %d\n", newHumidity);
 
-    return lastReading;
+    return newHumidity;
 }
 
 bool IsOutOfWater(double historicWaterLevels[MAXHISTORICAL]) {
@@ -251,6 +253,18 @@ int main(int argc, char *argv[])
     bool outOfWater = false;
     bool lastOutOfWater = false;
 
+    cout << endl;
+
+    for (int k = 0; k < 50; k++)
+    {
+        cout << "H (user): " << setprecision(2) << setHumidity << "   H (sensor): " << setprecision(2) << curHumidity << "   Wtr: " << setprecision(2) << pastWaterReadings[0] << "   Fan: ";
+
+        if (_fanOn == true) cout << "ON                 ";
+        else if (_fanOn == false && outOfWater == true) cout << "OFF (no water)             ";
+        else if (_fanOn == false) cout << "OFF                 ";
+        cout << "\r";
+    }
+
     while (true) {
 
         // update potentiometer outside of timer loop. Loop is only for measurements!
@@ -280,7 +294,15 @@ int main(int argc, char *argv[])
             auto avgTemp = GetAverage(pastTempReadings);
             auto avgWater = GetAverage(pastWaterReadings);
 
-            cout << "Humidity (avg): " << avgHumidity << "     Water level (avg): " << setprecision(4) << avgWater << endl;
+            for (int k = 0; k < 50; k++)
+            {
+                cout << "H (user): " << setprecision(2) << setHumidity << "   H (sensor): " << setprecision(2) << avgHumidity << "   Wtr: " << setprecision(2) << avgWater << "   Fan: ";
+
+                if (_fanOn == true) cout << "ON        ";
+                else if (_fanOn == false && outOfWater == true) cout << "OFF (no water)         ";
+                else if (_fanOn == false) cout << "OFF         ";
+                cout << "\r";
+            }
 
             // TODO display avg humidity on 7-seg
             // TODO display avg temp on 7-seg
@@ -321,7 +343,7 @@ int main(int argc, char *argv[])
                     // so we just ran out of water
                     SetWaterLight(true);
                     Beep(10, 150);
-                    cout << "Water basin is empty; refill!" << endl;
+                    cout << endl << "Water basin is empty; refill!" << endl;
                 }
             }
 
