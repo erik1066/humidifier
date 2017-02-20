@@ -19,11 +19,13 @@
 
 #include <QCoreApplication>
 #include <iostream>
+#include <iomanip>
 #include <wiringPi.h>
 #include <softTone.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <mcp3004.h>
 
 #include "timer.h"
 
@@ -33,21 +35,34 @@ using namespace std;
 #define TOLERANCE 2.0 // 2 degrees F
 #endif
 
-#define RELAY_PIN 14 // the 5v relay module is on this GPIO pin, it controls the fan
+#define RELAYPIN 14 // the 5v relay module is on this GPIO pin, it controls the fan
 #define DHTPIN 16 // the pin for the temp/humidity sensor
 #define MAXTIMINGS 85
 #define MAXHISTORICAL 14
+#define BUZZERPIN 18
+#define WATERLEDPIN 21
 
 bool _fanOn = false;
 
+void Beep(int reps, int sleep)
+{
+    for(int i = 0; i < reps; i++)
+    {
+        digitalWrite(BUZZERPIN, HIGH);
+        delay(sleep);
+        digitalWrite(BUZZERPIN, LOW);
+        delay(sleep);
+    }
+}
+
 void TurnOnFan() {
-    digitalWrite(RELAY_PIN, LOW);
+    digitalWrite(RELAYPIN, LOW); // disable for now
     cout << "Humidifier fan on" << endl;
     _fanOn = true;
 }
 
 void TurnOffFan() {
-    digitalWrite(RELAY_PIN, HIGH);
+    digitalWrite(RELAYPIN, HIGH);
     cout << "Humidifier fan off" << endl;
     _fanOn = false;
 }
@@ -121,7 +136,7 @@ bool GetCurrentReadings(double &temp, double &humidity) {
                 (dht11_dat[4] == ((dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3]) & 0xFF)) ) {
             f = dht11_dat[2] * 9. / 5. + 32;
 
-        printf( "Humidity = %d.%d %% Temperature = %d.%d C (%.1f F)\n",
+        printf( "  Sensor reading (DHT11): Humidity = %d.%d %% Temperature = %d.%d C (%.1f F)\n",
             dht11_dat[0], dht11_dat[1], dht11_dat[2], dht11_dat[3], f );
 
         temp = f;
@@ -130,8 +145,41 @@ bool GetCurrentReadings(double &temp, double &humidity) {
     }
     else
     {
-        printf( "Bad data read from DHT11, skipping\n" );
+        printf( "  Sensor reading (DHT11): Bad data read from DHT11, skipping\n" );
         return false;
+    }
+}
+
+double GetWaterLevel() {
+    int lastReading = analogRead(101);
+
+    int currentReading = analogRead(101);
+    if (currentReading != lastReading) {
+        int newWaterLevel = (currentReading*100)/1023 - 1;
+        printf("  Sensor reading (Water): %d\n", newWaterLevel);
+        lastReading = currentReading;
+    }
+
+    return lastReading + 0.0;
+}
+
+bool IsOutOfWater(double historicWaterLevels[MAXHISTORICAL]) {
+    double avg = GetAverage(historicWaterLevels);
+
+    if (avg < 10) { // arbitrary, may need adjusting
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+void SetWaterLight(bool isOn) {
+    if (isOn) {
+        digitalWrite(WATERLEDPIN, HIGH);
+    }
+    else {
+        digitalWrite(WATERLEDPIN, LOW);
     }
 }
 
@@ -148,13 +196,23 @@ int main(int argc, char *argv[])
 
     cout << "Wiring Pi setup completed" << endl;
 
-    pinMode(RELAY_PIN, OUTPUT);
-    digitalWrite(RELAY_PIN, HIGH); // fan starts in OFF position!
+    pinMode(RELAYPIN, OUTPUT);
+    digitalWrite(RELAYPIN, HIGH); // fan starts in OFF position!
+
+    pinMode(BUZZERPIN, OUTPUT);
+    pinMode(WATERLEDPIN, OUTPUT);
+
+    digitalWrite(WATERLEDPIN, LOW);
 
     cout << "Relay PIN set" << endl;
 
+    mcp3004Setup(100, 0);
+
+    double waterLevel = GetWaterLevel();
+
     double pastTempReadings [MAXHISTORICAL];
     double pastHumidityReadings [MAXHISTORICAL];
+    double pastWaterReadings [MAXHISTORICAL];
 
     double curTemp = 0.0;
     double curHumidity = 0.0;
@@ -174,6 +232,10 @@ int main(int argc, char *argv[])
     }
     cout << "Baseline temperature and humidity set" << endl;
 
+    for (int i = 0; i < MAXHISTORICAL; i++) {
+        pastWaterReadings[i] = waterLevel;
+    }
+
     double setHumidity = 0.0;
 
     cout << "Starting timer..." << endl;
@@ -182,6 +244,9 @@ int main(int argc, char *argv[])
     cout << "Timer set" << endl;
 
     cout << "Running control code..." << endl;
+
+    bool outOfWater = false;
+    bool lastOutOfWater = false;
 
     while (true) {
 
@@ -192,6 +257,10 @@ int main(int argc, char *argv[])
 
         if (timer.GetIsElapsed() == true)
         {
+            ShiftReadings(pastWaterReadings);
+            pastWaterReadings[MAXHISTORICAL - 1] = GetWaterLevel();
+            outOfWater = IsOutOfWater(pastWaterReadings);
+
             bool valid = GetCurrentReadings(curTemp, curHumidity);
 
             delay(20);
@@ -204,30 +273,58 @@ int main(int argc, char *argv[])
                 pastTempReadings[MAXHISTORICAL - 1] = curTemp;
             }
 
-            auto avgHumdity = GetAverage(pastHumidityReadings);
+            auto avgHumidity = GetAverage(pastHumidityReadings);
             auto avgTemp = GetAverage(pastTempReadings);
+            auto avgWater = GetAverage(pastWaterReadings);
 
-            // TODO display avg humidity
-            // TODO display avg temp
+            cout << "Humidity (avg): " << avgHumidity << "     Water level (avg): " << setprecision(4) << avgWater << endl;
 
-            // If the running average over past MAHISTORICAL readings is less than the SET value minus the allowable TOLERANCE, then turn on the fan
-            if (avgHumdity < setHumidity - TOLERANCE)
+            // TODO display avg humidity on 7-seg
+            // TODO display avg temp on 7-seg
+
+            if (!outOfWater)
             {
-                if (_fanOn == false)
+                // If the running average over past MAXHISTORICAL readings is less than the SET value minus the allowable TOLERANCE, then turn on the fan
+                if (avgHumidity < setHumidity - TOLERANCE)
                 {
-                    TurnOnFan();
+                    if (_fanOn == false)
+                    {
+                        TurnOnFan();
+                    }
+                }
+                else
+                {
+                    if (_fanOn == true)
+                    {
+                        TurnOffFan();
+                    }
+                }
+
+                if (outOfWater == false && lastOutOfWater == true)
+                {
+                    SetWaterLight(false);
                 }
             }
             else
             {
-                if (_fanOn == true)
+                if (lastOutOfWater == false && outOfWater == true)
                 {
-                    TurnOffFan();
+                    if (_fanOn == true)
+                    {
+                        TurnOffFan();
+                    }
+
+                    // so we just ran out of water
+                    SetWaterLight(true);
+                    Beep(10, 150);
+                    cout << "Water basin is empty; refill!" << endl;
                 }
             }
 
             timer = Timer(2000);
             timer.Start();
+
+            lastOutOfWater = outOfWater;
         }
     }
 
