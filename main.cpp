@@ -83,10 +83,6 @@ void ShiftReadings(double readings[MAXHISTORICAL]) {
     }
 }
 
-double GetHumiditySettingFromUser() {
-    return 50;
-}
-
 int dht11_dat[5] = { 0, 0, 0, 0, 0 };
 
 bool GetCurrentReadings(double &temp, double &humidity) {
@@ -151,16 +147,22 @@ bool GetCurrentReadings(double &temp, double &humidity) {
 }
 
 double GetWaterLevel() {
-    int lastReading = analogRead(101);
 
     int currentReading = analogRead(101);
-    if (currentReading != lastReading) {
-        int newWaterLevel = (currentReading*100)/1023 - 1;
-        printf("  Sensor reading (Water): %d\n", newWaterLevel);
-        lastReading = currentReading;
-    }
+
+    int newWaterLevel = (currentReading*100)/1023 - 1;
+    printf("  Sensor reading (Water): %d\n", newWaterLevel);
 
     return lastReading + 0.0;
+}
+
+int GetHumiditySetLevel() {
+
+    int currentReading = analogRead(100);
+    int newHumidity = (currentReading*100)/1023 - 1;
+    printf("  Dial reading: %d\n", newHumidity);
+
+    return lastReading;
 }
 
 bool IsOutOfWater(double historicWaterLevels[MAXHISTORICAL]) {
@@ -218,6 +220,7 @@ int main(int argc, char *argv[])
     double curHumidity = 0.0;
 
     cout << "Getting baseline temperature and humidity readings..." << endl;
+
     while (true)
     {
         if (GetCurrentReadings(curTemp, curHumidity) == true)
@@ -251,7 +254,7 @@ int main(int argc, char *argv[])
     while (true) {
 
         // update potentiometer outside of timer loop. Loop is only for measurements!
-        setHumidity = GetHumiditySettingFromUser();
+        setHumidity = GetHumiditySetLevel() + 0.0;
 
         delay(100);
 
@@ -307,6 +310,7 @@ int main(int argc, char *argv[])
             }
             else
             {
+                // First cycle after water basin is empty, so auto-shutoff the fan and beep
                 if (lastOutOfWater == false && outOfWater == true)
                 {
                     if (_fanOn == true)
