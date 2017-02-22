@@ -39,21 +39,28 @@ using namespace std;
 #define MAXTIMINGS 85
 #define MAXHISTORICAL 14
 #define BUZZERPIN 18
-#define WATERLEDPIN 24
+#define WATERLEDPIN 16
 
-#define RT_DIGIT_SET_VALUE 21
-#define LT_DIGIT_SET_VALUE 20
+#define RT_DIGIT_SET_VALUE 4
+#define LT_DIGIT_SET_VALUE 17
 
-#define RT_DIGIT_TEMP_VALUE 27
-#define LT_DIGIT_TEMP_VALUE 22
+#define RT_DIGIT_TEMP_VALUE 20
+#define LT_DIGIT_TEMP_VALUE 21
 
-#define RT_DIGIT_HUM_VALUE 12
-#define LT_DIGIT_HUM_VALUE 16
+#define RT_DIGIT_HUM_VALUE 27
+#define LT_DIGIT_HUM_VALUE 22
 
 #define DIGIT8 13
 #define DIGIT4 26
 #define DIGIT2 19
 #define DIGIT1 6
+
+#define LEFT 10
+#define RIGHT 1
+
+#define TEMPERATURE 1
+#define HUMIDSENSOR 2
+#define HUMIDSETTER 3
 
 bool _fanOn = false;
 
@@ -65,12 +72,25 @@ void SetAllDisplayLow(){
     digitalWrite(RT_DIGIT_TEMP_VALUE, LOW);
     digitalWrite(LT_DIGIT_TEMP_VALUE, LOW);
 }
-void ResetAllDigits() {
-    digitalWrite(DIGIT1, LOW);
-    digitalWrite(DIGIT2, LOW);
-    digitalWrite(DIGIT4, LOW);
-    digitalWrite(DIGIT8, LOW);
+
+void SetAllDisplayHigh(){
+    digitalWrite(RT_DIGIT_HUM_VALUE, HIGH);
+    digitalWrite(LT_DIGIT_HUM_VALUE, HIGH);
+    digitalWrite(RT_DIGIT_SET_VALUE, HIGH);
+    digitalWrite(LT_DIGIT_SET_VALUE, HIGH);
+    digitalWrite(RT_DIGIT_TEMP_VALUE, HIGH);
+    digitalWrite(LT_DIGIT_TEMP_VALUE, HIGH);
 }
+
+void ResetAllDigits() {
+    SetAllDisplayHigh();
+    digitalWrite(DIGIT1, HIGH);
+    digitalWrite(DIGIT2, HIGH);
+    digitalWrite(DIGIT4, HIGH);
+    digitalWrite(DIGIT8, HIGH);
+    SetAllDisplayLow();
+}
+
 void CheckAndSet(int ValueToset, int CurrentBit, int PinDigit){
     if((int)(ValueToset|CurrentBit) == ValueToset){
         digitalWrite(PinDigit, HIGH);
@@ -118,8 +138,10 @@ void SetRightValue(int DisplaySet, int Value){
 void SetDisplayValue(int DisplaySet, int Value){
     int LeftValue = Value / 10;
     int RightValue = Value % 10;
-    SetLeftValue(DisplaySet, int LeftValue);
-    SetRightValue(DisplaySet, int RightValue);
+    SetLeftValue(DisplaySet, LeftValue);
+    delay(1);
+    SetRightValue(DisplaySet, RightValue);
+    delay(1);
 }
 void SetUpPins() {
     pinMode(DIGIT8, OUTPUT);
@@ -132,8 +154,8 @@ void SetUpPins() {
     pinMode(RT_DIGIT_SET_VALUE, OUTPUT);
     pinMode(LT_DIGIT_TEMP_VALUE, OUTPUT);
     pinMode(RT_DIGIT_TEMP_VALUE, OUTPUT);
-    SetAllDigitLow();
-    SetAllDisplayLow;    
+    ResetAllDigits();
+    SetAllDisplayLow();
 }
 
 void Beep(int reps, int sleep)
@@ -279,185 +301,6 @@ void SetWaterLight(bool isOn) {
     }
 }
 
-// void DisplayDigit(int digit) {
-
-//     switch (digit) {
-//         case -1:
-//         case 0:
-//             digitalWrite(6, LOW); // 1
-//             digitalWrite(13, LOW); // 8
-//             digitalWrite(19, LOW); // 2
-//             digitalWrite(26, LOW); // 4
-//             break;
-//     case 1:
-//         digitalWrite(6, HIGH); // 1
-//         digitalWrite(13, LOW); // 8
-//         digitalWrite(19, LOW); // 2
-//         digitalWrite(26, LOW); // 4
-//         break;
-//     case 2:
-//         digitalWrite(6, LOW); // 1
-//         digitalWrite(13, LOW); // 8
-//         digitalWrite(19, HIGH); // 2
-//         digitalWrite(26, LOW); // 4
-//         break;
-//     case 3:
-//         digitalWrite(6, HIGH); // 1
-//         digitalWrite(13, LOW); // 8
-//         digitalWrite(19, HIGH); // 2
-//         digitalWrite(26, LOW); // 4
-//         break;
-//     case 4:
-//         digitalWrite(6, LOW); // 1
-//         digitalWrite(13, LOW); // 8
-//         digitalWrite(19, LOW); // 2
-//         digitalWrite(26, HIGH); // 4
-//         break;
-//     case 5:
-//         digitalWrite(6, HIGH); // 1
-//         digitalWrite(13, LOW); // 8
-//         digitalWrite(19, LOW); // 2
-//         digitalWrite(26, HIGH); // 4
-//         break;
-//     case 6:
-//         digitalWrite(6, LOW); // 1
-//         digitalWrite(13, LOW); // 8
-//         digitalWrite(19, HIGH); // 2
-//         digitalWrite(26, HIGH); // 4
-//         break;
-//     case 7:
-//         digitalWrite(6, HIGH); // 1
-//         digitalWrite(13, LOW); // 8
-//         digitalWrite(19, HIGH); // 2
-//         digitalWrite(26, HIGH); // 4
-//         break;
-//     case 8:
-//         digitalWrite(6, LOW); // 1
-//         digitalWrite(13, HIGH); // 8
-//         digitalWrite(19, LOW); // 2
-//         digitalWrite(26, LOW); // 4
-//         break;
-//     case 9:
-//         digitalWrite(6, HIGH); // 1
-//         digitalWrite(13, HIGH); // 8
-//         digitalWrite(19, LOW); // 2
-//         digitalWrite(26, LOW); // 4
-//         break;
-//     default:
-//         digitalWrite(6, HIGH); // 1
-//         digitalWrite(13, HIGH); // 8
-//         digitalWrite(19, HIGH); // 2
-//         digitalWrite(26, HIGH); // 4
-//     }
-// }
-
-// void ResetDigits() {
-
-//     double delayTime1 = 0.1;
-//     double delayTime2 = 0.1;
-
-//     digitalWrite(RT_DIGIT_SET_VALUE, LOW);
-//     digitalWrite(LT_DIGIT_SET_VALUE, LOW);
-//     digitalWrite(RT_DIGIT_TEMP_VALUE, LOW);
-//     digitalWrite(LT_DIGIT_TEMP_VALUE, LOW);
-//     digitalWrite(RT_DIGIT_HUM_VALUE, LOW);
-//     digitalWrite(LT_DIGIT_HUM_VALUE, LOW);
-
-//     delay(delayTime1);
-
-//     digitalWrite(RT_DIGIT_SET_VALUE, HIGH);
-//     DisplayDigit(-5);
-//     delay(delayTime2);
-
-//     digitalWrite(LT_DIGIT_SET_VALUE, HIGH);
-//     DisplayDigit(-5);
-//     delay(delayTime2);
-
-//     digitalWrite(RT_DIGIT_TEMP_VALUE, HIGH);
-//     DisplayDigit(-5);
-//     delay(delayTime2);
-
-//     digitalWrite(LT_DIGIT_TEMP_VALUE, HIGH);
-//     DisplayDigit(-5);
-//     delay(delayTime2);
-
-//     digitalWrite(RT_DIGIT_HUM_VALUE, HIGH);
-//     DisplayDigit(-5);
-//     delay(delayTime2);
-
-//     digitalWrite(LT_DIGIT_HUM_VALUE, HIGH);
-//     DisplayDigit(-5);
-//     delay(delayTime2);
-
-//     digitalWrite(RT_DIGIT_SET_VALUE, LOW);
-//     digitalWrite(LT_DIGIT_SET_VALUE, LOW);
-//     digitalWrite(RT_DIGIT_TEMP_VALUE, LOW);
-//     digitalWrite(LT_DIGIT_TEMP_VALUE, LOW);
-//     digitalWrite(RT_DIGIT_HUM_VALUE, LOW);
-//     digitalWrite(LT_DIGIT_HUM_VALUE, LOW);
-// }
-
-// void DisplayDigits(int setValue, int actualValue, int tempValue) {
-
-//     for (int i = 2 ; i >= 0; i--)
-//     {
-// //        ResetDigits();
-
-//         delay(1);
-
-//         int value = setValue;
-//         int output1 = RT_DIGIT_SET_VALUE;
-//         int output2 = LT_DIGIT_SET_VALUE;
-
-//         if (i == 0) {
-//             value = setValue;
-//             output1 = RT_DIGIT_SET_VALUE;
-//             output2 = LT_DIGIT_SET_VALUE;
-//         }
-//         else if (i == 1) {
-//             value = tempValue;
-//             output1 = RT_DIGIT_TEMP_VALUE;
-//             output2 = LT_DIGIT_TEMP_VALUE;
-//         }
-//         else if (i == 2) {
-//             value = actualValue;
-//             output1 = RT_DIGIT_HUM_VALUE;
-//             output2 = LT_DIGIT_HUM_VALUE;
-//         }
-
-//         int rightDigit = value % 10;
-//         int leftDigit = (value - rightDigit) / 10;
-
-//         if (value < -1) {
-//             rightDigit = -5;
-//             leftDigit = -5;
-//         }
-
-//         delay(1);
-
-//         // turns on RIGHT digit
-//         digitalWrite(output1, HIGH);
-//         digitalWrite(output2, LOW);
-
-//         DisplayDigit(rightDigit);
-
-//         delay(1);
-
-//         // turns on LEFT digit
-//         digitalWrite(output1, LOW);
-//         digitalWrite(output2, HIGH);
-
-//         DisplayDigit(leftDigit);
-
-//         delay(1);
-
-//         digitalWrite(output1, LOW);
-//         digitalWrite(output2, LOW);
-
-//         delay(0.5);
-//     }
-// }
-
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
@@ -480,23 +323,7 @@ int main(int argc, char *argv[])
     digitalWrite(WATERLEDPIN, LOW);
 
     SetUpPins();
-    SetAllDisplayLow();
-
-    // pinMode(RT_DIGIT_SET_VALUE, OUTPUT);
-    // pinMode(LT_DIGIT_SET_VALUE, OUTPUT);
-
-    // pinMode(RT_DIGIT_HUM_VALUE, OUTPUT);
-    // pinMode(LT_DIGIT_HUM_VALUE, OUTPUT);
-
-    // pinMode(RT_DIGIT_TEMP_VALUE, OUTPUT);
-    // pinMode(LT_DIGIT_TEMP_VALUE, OUTPUT);
-
-    // pinMode(6, OUTPUT);
-    // pinMode(13, OUTPUT);
-    // pinMode(19, OUTPUT);
-    // pinMode(26, OUTPUT);
-
-    // DisplayDigits(-5, -5, -5);
+    ResetAllDigits();
 
     cout << "Relay PIN set" << endl;
 
@@ -558,6 +385,10 @@ int main(int argc, char *argv[])
     auto avgHumidity = GetAverage(pastHumidityReadings);
     auto avgTemp = GetAverage(pastTempReadings);
     auto avgWater = GetAverage(pastWaterReadings);
+    setHumidity = GetHumiditySetLevel() + 0.0;
+    double lastSetHumidity = setHumidity;
+
+    SetDisplayValue(HUMIDSETTER, setHumidity);
 
     while (true) {
 
@@ -566,9 +397,11 @@ int main(int argc, char *argv[])
 
         SetDisplayValue(TEMPERATURE, avgTemp);
         SetDisplayValue(HUMIDSENSOR, avgHumidity);
-        SetDisplayValue(HUMIDSETTER, setHumidity);
-
-//        DisplayDigits(setHumidity, avgHumidity, avgTemp);
+        // Only change the set humidity if needed
+        if (setHumidity != lastSetHumidity) {
+            SetDisplayValue(HUMIDSETTER, setHumidity);
+            lastSetHumidity = setHumidity;
+        }
 
         delay(5);
 
@@ -603,9 +436,6 @@ int main(int argc, char *argv[])
                 else if (_fanOn == false) cout << "OFF         ";
                 cout << "\r";
             }
-
-            // TODO display avg humidity on 7-seg
-            // TODO display avg temp on 7-seg
 
             if (!outOfWater)
             {
