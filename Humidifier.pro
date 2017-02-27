@@ -27,3 +27,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 HEADERS += \
     timer.h
+
+QMAKE_CXXFLAGS += -std=c++11
+
+LIBS += -L/usr/local/lib -lwiringPi

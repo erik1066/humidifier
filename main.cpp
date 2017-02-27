@@ -41,7 +41,7 @@ using namespace std;
 #define BUZZERPIN 18
 #define WATERLEDPIN 16
 
-#define RT_DIGIT_SET_VALUE 4
+#define RT_DIGIT_SET_VALUE 12
 #define LT_DIGIT_SET_VALUE 17
 
 #define RT_DIGIT_TEMP_VALUE 20
@@ -61,6 +61,11 @@ using namespace std;
 #define TEMPERATURE 1
 #define HUMIDSENSOR 2
 #define HUMIDSETTER 3
+
+#define LED10TO30 2
+#define LED30TO50 3
+#define LED50TO70 24
+#define LED70TO100 25
 
 bool _fanOn = false;
 
@@ -91,6 +96,13 @@ void ResetAllDigits() {
     SetAllDisplayLow();
 }
 
+void ResetLED() {
+    digitalWrite(LED10TO30, LOW);
+    digitalWrite(LED30TO50, LOW);
+    digitalWrite(LED50TO70, LOW);
+    digitalWrite(LED70TO100, LOW);
+}
+
 void CheckAndSet(int ValueToset, int CurrentBit, int PinDigit){
     if((int)(ValueToset|CurrentBit) == ValueToset){
         digitalWrite(PinDigit, HIGH);
@@ -98,12 +110,14 @@ void CheckAndSet(int ValueToset, int CurrentBit, int PinDigit){
         digitalWrite(PinDigit, LOW);
     }
 }
+
 void SetDigit(int ValueToSet) {
     CheckAndSet(ValueToSet, 8, DIGIT8);
     CheckAndSet(ValueToSet, 4, DIGIT4);
     CheckAndSet(ValueToSet, 2, DIGIT2);
     CheckAndSet(ValueToSet, 1, DIGIT1);
 }
+
 void SetValue(int DisplaySet, int Value, int LeftOrRight){
     SetAllDisplayLow();
     if (DisplaySet == TEMPERATURE){
@@ -136,6 +150,9 @@ void SetRightValue(int DisplaySet, int Value){
     SetValue(DisplaySet, Value, RIGHT);
 }
 void SetDisplayValue(int DisplaySet, int Value){
+    // Check for negative value and set it to be 0.
+    Value = (Value < 0 ? 0 : Value);
+
     int LeftValue = Value / 10;
     int RightValue = Value % 10;
     SetLeftValue(DisplaySet, LeftValue);
@@ -148,14 +165,39 @@ void SetUpPins() {
     pinMode(DIGIT4, OUTPUT);
     pinMode(DIGIT2, OUTPUT);
     pinMode(DIGIT1, OUTPUT);
+
+    pinMode(LED10TO30, OUTPUT);
+    pinMode(LED30TO50, OUTPUT);
+    pinMode(LED50TO70, OUTPUT);
+    pinMode(LED70TO100, OUTPUT);
+
     pinMode(LT_DIGIT_HUM_VALUE, OUTPUT);
     pinMode(RT_DIGIT_HUM_VALUE, OUTPUT);
     pinMode(LT_DIGIT_SET_VALUE, OUTPUT);
     pinMode(RT_DIGIT_SET_VALUE, OUTPUT);
     pinMode(LT_DIGIT_TEMP_VALUE, OUTPUT);
     pinMode(RT_DIGIT_TEMP_VALUE, OUTPUT);
+
+    ResetLED();
     ResetAllDigits();
     SetAllDisplayLow();
+}
+
+void LightUpLED(int Value) {
+    ResetLED();
+
+    if (Value >= 10) {
+        digitalWrite(LED10TO30, HIGH);
+        if (Value >= 30) {
+            digitalWrite(LED30TO50, HIGH);
+            if (Value >= 50) {
+                digitalWrite(LED50TO70, HIGH);
+                if (Value >=70) {
+                    digitalWrite(LED70TO100, HIGH);
+                }
+            }
+        }
+    }
 }
 
 void Beep(int reps, int sleep)
@@ -389,6 +431,7 @@ int main(int argc, char *argv[])
     double lastSetHumidity = setHumidity;
 
     SetDisplayValue(HUMIDSETTER, setHumidity);
+    LightUpLED(setHumidity);
 
     while (true) {
 
@@ -400,6 +443,7 @@ int main(int argc, char *argv[])
         // Only change the set humidity if needed
         if (setHumidity != lastSetHumidity) {
             SetDisplayValue(HUMIDSETTER, setHumidity);
+            LightUpLED(setHumidity);
             lastSetHumidity = setHumidity;
         }
 
